@@ -52,7 +52,7 @@ def main():
     move_finder_process = None  # For AI multiprocessing
     move_log_font = p.font.SysFont("Arial", 14, False, False)  # Font for move log
     player_one = True  # True, as this is the player
-    player_two = False  # Is player two a human?, false for ai
+    player_two = True  # Is player two a human?, false for ai
 
     while running:
         human_turn = (game_state.white_to_move and player_one) or (not game_state.white_to_move and player_two)
@@ -104,6 +104,7 @@ def main():
                     move_made = False
                     animate = False
                     game_over = False
+                    game_state.position_count = {}  # Reset position count
                     if ai_thinking:
                         move_finder_process.terminate()
                         ai_thinking = False
@@ -134,23 +135,24 @@ def main():
             animate = False
             move_undone = False
 
-        # Draw everything on the screen
-        drawGameState(screen, game_state, valid_moves, square_selected)
+            # Check for threefold repetition
+            if game_state.threefold_repetition:
+                game_over = True
+                drawEndGameText(screen, "Draw by threefold repetition")
+            elif game_state.checkmate:
+                game_over = True
+                if game_state.white_to_move:
+                    drawEndGameText(screen, "Black wins by checkmate")
+                else:
+                    drawEndGameText(screen, "White wins by checkmate")
+            elif game_state.stalemate:
+                game_over = True
+                drawEndGameText(screen, "Stalemate")
 
+        # Only draw game state if game is not over
         if not game_over:
+            drawGameState(screen, game_state, valid_moves, square_selected)
             drawMoveLog(screen, game_state, move_log_font)
-
-        # Handle game over conditions
-        if game_state.checkmate:
-            game_over = True
-            if game_state.white_to_move:
-                drawEndGameText(screen, "Black wins by checkmate")
-            else:
-                drawEndGameText(screen, "White wins by checkmate")
-
-        elif game_state.stalemate:
-            game_over = True
-            drawEndGameText(screen, "Stalemate")
 
         clock.tick(MAX_FPS)  # Control the FPS
         p.display.flip()  # Update the display
@@ -287,5 +289,6 @@ def animateMove(move, screen, board, clock):
 
 if __name__ == "__main__":
     main()
+
 
 

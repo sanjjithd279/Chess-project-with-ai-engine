@@ -41,6 +41,8 @@ class GameState:
         self.checks = []  # Pieces checking the king
         self.enpassant_possible = ()  # Track en passant possibilities
         self.enpassant_possible_log = [self.enpassant_possible]  # Log en passant history
+        self.position_count = {}  # Tracks occurrences of board positions
+        self.threefold_repetition = False  # Track if threefold repetition occurs
 
         # Track castling rights and history
         self.current_castling_rights = CastleRights(True, True, True, True)
@@ -104,6 +106,15 @@ class GameState:
                                                    self.current_castling_rights.bks,
                                                    self.current_castling_rights.wqs,
                                                    self.current_castling_rights.bqs))
+        board_hash = self.getBoardHash()
+        if board_hash in self.position_count:
+            self.position_count[board_hash] += 1
+        else:
+            self.position_count[board_hash] = 1
+
+        # Check for threefold repetition
+        if self.position_count[board_hash] == 3:
+            self.threefold_repetition = True  # Declare draw by threefold repetition
 
     def undoMove(self):
         """
@@ -145,6 +156,9 @@ class GameState:
                     self.board[move.end_row][move.end_col + 1] = "--"
             self.checkmate = False
             self.stalemate = False
+            board_hash = self.getBoardHash()
+            if board_hash in self.position_count:
+                self.position_count[board_hash] -= 1
 
     def updateCastleRights(self, move):
         """
@@ -530,6 +544,25 @@ class GameState:
         if self.board[row][col - 1] == '--' and self.board[row][col - 2] == '--' and self.board[row][col - 3] == '--':
             if not self.squareUnderAttack(row, col - 1) and not self.squareUnderAttack(row, col - 2):
                 moves.append(Move((row, col), (row, col - 2), self.board, is_castle_move=True))
+
+    def getBoardHash(self):
+        """
+        Generates a hash for the current board position.
+        """
+        # Board state
+        board_string = ''.join([''.join(row) for row in self.board])
+
+        # Castling rights
+        castling_string = f"{self.current_castling_rights.wks}{self.current_castling_rights.wqs}{self.current_castling_rights.bks}{self.current_castling_rights.bqs}"
+
+        # En passant square
+        en_passant_string = f"{self.enpassant_possible}"
+
+        # Whose turn it is
+        turn_string = 'w' if self.white_to_move else 'b'
+
+        # Combine all aspects into one string
+        return board_string + castling_string + en_passant_string + turn_string
 
 
 class CastleRights:
